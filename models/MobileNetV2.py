@@ -5,9 +5,6 @@ from torch.nn import Module
 
 from models.MoblieNet import DepthwiseConv2d
 
-a = DepthwiseConv2d(1,1,1)
-a.relu = nn.ReLU6()
-
 class BottleneckBlock(Module):
     def __init__(self, in_channel, out_channel, kernel_size, stride=1, padding=0,
                  bias=True, device='cuda', expension_ratio=1, residual=True):

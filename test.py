@@ -3,20 +3,25 @@ from torch import nn
 import torchvision
 from torchvision import transforms
 
-from models.MoblieNet import MobileNet
+from datetime import datetime
+
+from models.MoblieNet import MobileNet, MiniMobileNet
 from models.MobileNetV2 import MobileNetV2
+
+from datasets.cifar import Cifar100Dataset
 
 import time
 
 # Hyperparams
 max_epoch = 10
-batch_size = 4
+batch_size = 64
 
 
 # Cuda
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-# Dataset Setting
+# VOC Dataset Setting
+"""
 voc_class = ['background','aeroplane','bicycle','bird','boat',
              'bottle','bus','car','cat','chair',
              'cow','diningtable','dog','horse','motorbike',
@@ -32,7 +37,7 @@ train_loader = torch.utils.data.DataLoader(voc_train, batch_size=batch_size, shu
 voc_val = torchvision.datasets.voc.VOCDetection(VOC2012, image_set='val', transform=transforms.Compose([transforms.Resize((224,224)),
                                                                                         transforms.ToTensor(),]))
 val_loader = torch.utils.data.DataLoader(voc_val, batch_size=batch_size, shuffle=False, num_workers=4)
-
+"""
 def voc_annTotarget(ann, batch_size, n_classes=21):
     target = torch.zeros([batch_size, n_classes], dtype=torch.float)
     for obj in ann['annotation']['object']:
@@ -42,58 +47,67 @@ def voc_annTotarget(ann, batch_size, n_classes=21):
     return target
 
 # Model Setting
-model = MobileNet(n_classes=len(voc_class), device=device).to(device)
-criterion = nn.MultiLabelSoftMarginLoss()
-optimizer = torch.optim.RMSprop(model.parameters())
+model = MiniMobileNet(n_classes=100, device=device).to(device)
+# model = torchvision.models.resnet18().to(device)
+# model.fc = nn.Linear(512, 100)
+# model = model.to(device)
+#criterion = nn.MultiLabelSoftMarginLoss()
+criterion = nn.CrossEntropyLoss()
+#optimizer = torch.optim.RMSprop(model.parameters())
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
 
-
-
+cifar_root = '/home/ailab/data/cifar-100-python/'
+cifar_train = Cifar100Dataset(cifar_root, set_type='train')
+train_loader = torch.utils.data.DataLoader(cifar_train, batch_size=batch_size, shuffle=False, num_workers=8)
+cifar_val = Cifar100Dataset(cifar_root, set_type='val')
+val_loader = torch.utils.data.DataLoader(cifar_val, batch_size=batch_size, shuffle=False, num_workers=8)
 
 if __name__ == '__main__':
+    nowdate = datetime.now()
+    logfile = './logs/exp{}{}{}{}.txt'.format(nowdate.year, nowdate.month, nowdate.day, nowdate.hour)
+    with open(logfile, 'w+') as log:
+        print('Start training!!')
+        val_acc_history = []
+        dataloaders = {'train' : train_loader, 'val' : val_loader}
+        for epoch in range(max_epoch):
 
-    val_acc_history = []
-    dataloaders = {'train' : train_loader, 'val' : val_loader}
 
-    for epoch in range(max_epoch):
+            for phase in ['train', 'val']:
+                epoch_start = time.time()
+                phase_loss = 0.0
+                correct = 0
 
+                if phase == 'train':
+                    model.train()
+                else:
+                    model.eval()
 
-        for phase in ['train', 'val']:
-            epoch_start = time.time()
-            phase_loss = 0.0
-            pred_gap = 0.0
+                for imgs, targets in dataloaders[phase]:
+                    imgs = imgs.to(device)
+                    targets = targets.to(device)
 
-            if phase == 'train':
-                model.train()
-            else:
-                model.eval()
+                    optimizer.zero_grad()
 
-            for imgs, ann in dataloaders[phase]:
-                targets = voc_annTotarget(ann, batch_size).to(device)
-                imgs = imgs.to(device)
+                    with torch.set_grad_enabled(phase=='train'):
+                        out = model(imgs)
+                        loss = criterion(out, targets)
 
-                optimizer.zero_grad()
+                        if phase == 'train':
+                            loss.backward()
+                            optimizer.step()
 
-                with torch.set_grad_enabled(phase=='train'):
-                    out = model(imgs)
-                    loss = criterion(out, targets)
+                    _, predictions = torch.max(out, 1)
+                    phase_loss += loss.cpu().item()
+                    correct += torch.sum(predictions == targets.data)
 
-                    if phase == 'train':
-                        loss.backward()
-                        optimizer.step()
+                phase_loss /= len(dataloaders[phase].dataset)
+                correct /= len(dataloaders[phase].dataset)
 
-                predictions = out.data.softmax(dim=1)
-                phase_loss += loss.cpu().item()
+                epoch_time = time.time() - epoch_start
 
-                pred_gap += nn.ReLU()(targets - predictions).sum().cpu().item()
-                print("step working")
-
-            phase_loss /= len(dataloaders[phase].dataset)
-            pred_gap /= len(dataloaders[phase].dataset)
-
-            epoch_time = time.time() - epoch_start
-
-            print('[epoch{}][{}] loss : {:.4f}, gap : {:.4f}, time : {:.4f}'.format(epoch, phase, phase_loss, pred_gap, epoch_time))
-
+                print('[epoch{}][{}] loss : {:.6f}, time : {:.4f}'.format(epoch, phase, phase_loss, epoch_time))
+                log.write('[epoch{}][{}] loss : {:.6f}, time : {:.4f}'.format(epoch, phase, phase_loss, epoch_time))
+                log.flush()
 
 
 
