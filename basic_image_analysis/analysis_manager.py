@@ -45,6 +45,7 @@ class SingleDataset:
 
         hists = np.zeros(256, dtype=np.float)
         hist_dict = OrderedDict()
+        # TODO Not parallelized
         for i in self.image_list:
             img = cv2.imread(i)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -66,7 +67,7 @@ class SingleDataset:
             self.save()
 
     def set_entropy(self):
-        # TODO Complete function to calculate entropy of this dataset, use precomputed histogram
+        # TODO Not parallelized
         n_pixels = self.image_size[0] * self.image_size[1]
 
         entropy = 0.0
