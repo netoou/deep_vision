@@ -8,18 +8,18 @@ class DepthwiseConv2d(Module):
 
     """
     def __init__(self, in_channel, kernel_size, stride=1, padding=0,
-                 bias=True, device='cuda'):
+                 bias=True, bn=True, activation=nn.ReLU()):
         super(DepthwiseConv2d, self).__init__()
         self.in_channel = in_channel
-        self.device = device
+        self.batch_norm = bn
 
-        # self.depthwise = nn.ModuleList([nn.Conv2d(in_channels=1, out_channels=1, kernel_size=kernel_size, stride=stride,
-        #                             padding=padding, bias=bias).to(self.device) for i in range(self.in_channel)])
         self.depthwise = nn.Conv2d(in_channels=self.in_channel, out_channels=self.in_channel,
                                    kernel_size=kernel_size, stride=stride, padding=padding,
-                                   bias=bias, groups=self.in_channel).to(self.device)
-        self.bn = nn.BatchNorm2d(self.in_channel)
-        self.relu = nn.ReLU()
+                                   bias=bias, groups=self.in_channel)
+        if bn:
+            self.bn = nn.BatchNorm2d(self.in_channel)
+        if not activation == None:
+            self.activation = activation
 
     def forward(self, input):
         """
@@ -30,36 +30,28 @@ class DepthwiseConv2d(Module):
         """
         # process each channel seperatly
         assert input.shape[1] == self.in_channel, "input channel and output channel does not match! input : {}, filter : {}".format(input.shape[1], self.in_channel)
-        batch_size, channel, height, width = input.shape
-        # do depthwise convolution
-        # apply conv filter per each input channel
-        # not parallelized yet
-        # depthwise_feature = []
-        # for i in range(self.in_channel):
-        #     depthwise_feature.append(self.depthwise[i](input[:,i,:,:].reshape(-1, 1, height, width)))
-        #
-        # depthwise_feature = torch.cat(dim=1, tensors=depthwise_feature)
 
-        # use group parameter to optimized depthwise conv
         depthwise_feature = self.depthwise(input)
-        depthwise_feature = self.bn(depthwise_feature)
-        depthwise_feature = self.relu(depthwise_feature)
+        if self.batch_norm:
+            depthwise_feature = self.bn(depthwise_feature)
+        if not self.activation == None:
+            depthwise_feature = self.activation(depthwise_feature)
 
         return depthwise_feature
 
 class PointwiseConv2d(Module):
-    def __init__(self, in_channel, out_channel, bias=True, device='cuda'):
+    def __init__(self, in_channel, out_channel, bias=True, bn=True, activation=nn.ReLU()):
         super(PointwiseConv2d, self).__init__()
         self.in_channel = in_channel
         self.out_channel = out_channel
-        self.device = device
+        self.batch_norm = bn
 
-        self.pointwise = nn.Sequential(
-            nn.Conv2d(in_channels=self.in_channel, out_channels=self.out_channel, kernel_size=1, stride=1, padding=0,
+        self.conv = nn.Conv2d(in_channels=self.in_channel, out_channels=self.out_channel, kernel_size=1, stride=1, padding=0,
                       bias=bias),
-            nn.BatchNorm2d(self.out_channel),
-            nn.ReLU()
-        ).to(self.device)
+        if bn:
+            self.bn = nn.BatchNorm2d(self.out_channel),
+        if not activation == None:
+            self.activation = activation
 
     def forward(self, input):
         """
@@ -69,7 +61,12 @@ class PointwiseConv2d(Module):
         :param input: Depthwise fature map
         :return: pointwise feature map
         """
-        return self.pointwise(input)
+        input = self.conv(input)
+        if self.bn:
+            input = self.bn(input)
+        if self.activation:
+            input = self.activation(input)
+        return input
 
 class DepthwiseSaperableConv2D(Module):
     """
@@ -78,16 +75,15 @@ class DepthwiseSaperableConv2D(Module):
     Not optimized
     """
     def __init__(self, in_channel, out_channel, kernel_size, stride=1, padding=0,
-                 bias=True, device='cuda'):
+                 bias=True):
         super(DepthwiseSaperableConv2D, self).__init__()
         self.in_channel = in_channel
         self.out_channel = out_channel
-        self.device = device
 
         self.depthwise = DepthwiseConv2d(self.in_channel, kernel_size, stride=stride,
-                                         padding=padding, bias=bias, device=self.device).to(self.device)
+                                         padding=padding, bias=bias)
         self.pointwise = PointwiseConv2d(self.in_channel, self.out_channel,
-                                         bias=bias, device=self.device).to(self.device)
+                                         bias=bias)
 
     def forward(self, input):
         input = self.depthwise(input)
@@ -95,34 +91,33 @@ class DepthwiseSaperableConv2D(Module):
         return input
 
 class MiniMobileNet(Module):
-    def __init__(self, n_classes, device='cuda' if torch.cuda.is_available() else 'cpu'):
+    def __init__(self, n_classes):
         super(MiniMobileNet, self).__init__()
 
         self.n_classes = n_classes
-        self.device = device
 
         self.conv1 = nn.Sequential(
             nn.Conv2d(in_channels=3, out_channels=32, kernel_size=3, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(32),
             nn.ReLU()
-        ).to(self.device)
+        )
 
         self.dw1 = DepthwiseSaperableConv2D(in_channel=32, out_channel=64, kernel_size=3, stride=1, padding=1,
-                                            bias=False, device=self.device)
+                                            bias=False)
         self.dw2 = DepthwiseSaperableConv2D(in_channel=64, out_channel=128, kernel_size=3, stride=2, padding=1,
-                                            bias=False, device=self.device)
+                                            bias=False)
         self.dw3 = DepthwiseSaperableConv2D(in_channel=128, out_channel=128, kernel_size=3, stride=1, padding=1,
-                                            bias=False, device=self.device)
+                                            bias=False)
         self.dw4 = DepthwiseSaperableConv2D(in_channel=128, out_channel=256, kernel_size=3, stride=2, padding=1,
-                                            bias=False, device=self.device)
+                                            bias=False)
         self.dw5 = DepthwiseSaperableConv2D(in_channel=256, out_channel=256, kernel_size=3, stride=1, padding=1,
-                                            bias=False, device=self.device)
+                                            bias=False)
         self.dw6 = DepthwiseSaperableConv2D(in_channel=256, out_channel=512, kernel_size=3, stride=1, padding=1,
-                                            bias=False, device=self.device)
+                                            bias=False)
 
-        self.avgpool = nn.AdaptiveAvgPool2d(output_size=(1,1)).to(self.device)
-        self.linear = nn.Linear(512, self.n_classes).to(self.device)
-        self.softmax = nn.Softmax(dim=1).to(self.device)
+        self.avgpool = nn.AdaptiveAvgPool2d(output_size=(1,1))
+        self.linear = nn.Linear(512, self.n_classes)
+        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, input):
         # input shape : b, c, h, w (batch size, channels, height, width)
@@ -151,50 +146,49 @@ class MiniMobileNet(Module):
         return input
 
 class MobileNet(Module):
-    def __init__(self, n_classes, device='cuda' if torch.cuda.is_available() else 'cpu'):
+    def __init__(self, n_classes):
         super(MobileNet, self).__init__()
 
         self.n_classes = n_classes
-        self.device = device
 
         self.conv1 = nn.Sequential(
             nn.Conv2d(in_channels=3, out_channels=32, kernel_size=3, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(32),
             nn.ReLU()
-        ).to(self.device)
+        )
 
         self.dw1 = DepthwiseSaperableConv2D(in_channel=32, out_channel=64, kernel_size=3, stride=1, padding=1,
-                                            bias=False, device=self.device)
+                                            bias=False)
         self.dw2 = DepthwiseSaperableConv2D(in_channel=64, out_channel=128, kernel_size=3, stride=2, padding=1,
-                                            bias=False, device=self.device)
+                                            bias=False)
         self.dw3 = DepthwiseSaperableConv2D(in_channel=128, out_channel=128, kernel_size=3, stride=1, padding=1,
-                                            bias=False, device=self.device)
+                                            bias=False)
         self.dw4 = DepthwiseSaperableConv2D(in_channel=128, out_channel=256, kernel_size=3, stride=2, padding=1,
-                                            bias=False, device=self.device)
+                                            bias=False)
         self.dw5 = DepthwiseSaperableConv2D(in_channel=256, out_channel=256, kernel_size=3, stride=1, padding=1,
-                                            bias=False, device=self.device)
+                                            bias=False)
         self.dw6 = DepthwiseSaperableConv2D(in_channel=256, out_channel=512, kernel_size=3, stride=2, padding=1,
-                                            bias=False, device=self.device)
+                                            bias=False)
 
         self.dw7 = DepthwiseSaperableConv2D(in_channel=512, out_channel=512, kernel_size=3, stride=1, padding=1,
-                                            bias=False, device=self.device)
+                                            bias=False)
         self.dw8 = DepthwiseSaperableConv2D(in_channel=512, out_channel=512, kernel_size=3, stride=1, padding=1,
-                                            bias=False, device=self.device)
+                                            bias=False)
         self.dw9 = DepthwiseSaperableConv2D(in_channel=512, out_channel=512, kernel_size=3, stride=1, padding=1,
-                                            bias=False, device=self.device)
+                                            bias=False)
         self.dw10 = DepthwiseSaperableConv2D(in_channel=512, out_channel=512, kernel_size=3, stride=1, padding=1,
-                                            bias=False, device=self.device)
+                                            bias=False)
         self.dw11 = DepthwiseSaperableConv2D(in_channel=512, out_channel=512, kernel_size=3, stride=1, padding=1,
-                                            bias=False, device=self.device)
+                                            bias=False)
 
         self.dw12 = DepthwiseSaperableConv2D(in_channel=512, out_channel=1024, kernel_size=3, stride=2, padding=1,
-                                            bias=False, device=self.device)
+                                            bias=False)
         self.dw13 = DepthwiseSaperableConv2D(in_channel=1024, out_channel=1024, kernel_size=3, stride=1, padding=1,
-                                             bias=False, device=self.device)
+                                             bias=False)
 
-        self.avgpool = nn.AvgPool2d(kernel_size=7).to(self.device)
-        self.linear = nn.Linear(1024, self.n_classes).to(self.device)
-        self.softmax = nn.Softmax(dim=1).to(self.device)
+        self.avgpool = nn.AvgPool2d(kernel_size=7)
+        self.linear = nn.Linear(1024, self.n_classes)
+        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, input):
         # input shape : b, c, h, w (batch size, channels, height, width)

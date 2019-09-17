@@ -79,7 +79,7 @@ class VOCDataset(Dataset):
         Transform annotation dictionary to numpy array style annotation blocks,
 
         :param ann_dict: Annotation dictionary from xml file, recommend to use xmltodict library
-        :return: 5 x 20 numpy array, first column is class label, other 1 to 4 columns are bounding box information with following order : xmax, xmin, ymax, ymin
+        :return: 5 x 20 numpy array, first column is class label, other 1 to 4 columns are bounding box information with following order : ymin, ymax, xmin, xmax
         """
         ann_dict = ann_dict['annotation']
 
@@ -92,15 +92,16 @@ class VOCDataset(Dataset):
         object_dict = ann_dict['object']
         if type(object_dict) == OrderedDict:
             object_dict = [object_dict]
-        objects = np.zeros((20, 5), dtype=np.int)
+        # row with -1 indicates end of object
+        objects = np.zeros((20, 5), dtype=np.int16) - 1
         # order : class, xmax, xmin, ymax, ymin
         for idx, obj in enumerate(object_dict):
             objects[idx][0] = classes.index(obj['name'])
             # VOC format follows Matlab, index starts from 0
-            objects[idx][1] = obj['bndbox']['xmax'] - 1
-            objects[idx][2] = obj['bndbox']['xmin'] - 1
-            objects[idx][3] = obj['bndbox']['ymax'] - 1
-            objects[idx][4] = obj['bndbox']['ymin'] - 1
+            objects[idx][1] = int(obj['bndbox']['ymin']) - 1
+            objects[idx][2] = int(obj['bndbox']['xmin']) - 1
+            objects[idx][3] = int(obj['bndbox']['ymax']) - 1
+            objects[idx][4] = int(obj['bndbox']['xmax']) - 1
 
         return filename, folder, img_size, objects
 
