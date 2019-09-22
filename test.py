@@ -1,12 +1,9 @@
 import torch
 from torch import nn
-import torchvision
-from torchvision import transforms
 
 from datetime import datetime
 
-from models.MoblieNet import MobileNet, MiniMobileNet
-from models.MobileNetV2 import MobileNetV2
+from models.classification.MoblieNet import MiniMobileNet
 
 from datasets.cifar import Cifar100Dataset
 

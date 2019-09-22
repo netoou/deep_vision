@@ -6,6 +6,8 @@ import xmltodict
 from PIL import Image
 from collections import OrderedDict
 
+from misc.utils import yxyx_to_yxhw
+
 import numpy as np
 import cv2
 
@@ -55,7 +57,8 @@ class VOCDataset(Dataset):
         # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = self.transform(img)
         # label
-        objects = torch.tensor(objects, dtype=torch.int)
+        objects[:,1:] = np.vstack([yxyx_to_yxhw(i) for i in objects[:,1:]])
+        objects = torch.tensor(objects, dtype=torch.float)
 
         return img, objects
 
@@ -87,13 +90,13 @@ class VOCDataset(Dataset):
         folder = ann_dict['folder']
 
         img_size = ann_dict['size']
-        img_size = (img_size['depth'], img_size['height'], img_size['width'],)
+        img_size = (int(img_size['depth']), int(img_size['height']), int(img_size['width']),)
 
         object_dict = ann_dict['object']
         if type(object_dict) == OrderedDict:
             object_dict = [object_dict]
         # row with -1 indicates end of object
-        objects = np.zeros((20, 5), dtype=np.int16) - 1
+        objects = np.zeros((20, 5), dtype=np.float) - 1
         # order : class, xmax, xmin, ymax, ymin
         for idx, obj in enumerate(object_dict):
             objects[idx][0] = classes.index(obj['name'])
@@ -102,6 +105,12 @@ class VOCDataset(Dataset):
             objects[idx][2] = int(obj['bndbox']['xmin']) - 1
             objects[idx][3] = int(obj['bndbox']['ymax']) - 1
             objects[idx][4] = int(obj['bndbox']['xmax']) - 1
+
+        # reduce the length, height of bbox to match transformed image size
+        objects[:,1] = objects[:,1] * (self.input_size[0] / img_size[1])
+        objects[:, 2] = objects[:, 2] * (self.input_size[1] / img_size[2])
+        objects[:, 3] = objects[:, 3] * (self.input_size[0] / img_size[1])
+        objects[:, 4] = objects[:, 4] * (self.input_size[1] / img_size[2])
 
         return filename, folder, img_size, objects
 
