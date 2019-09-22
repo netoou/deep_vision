@@ -6,6 +6,10 @@ import torchvision
 
 from torch import nn
 from torch.nn import Module
+from torch.autograd import Function
+from torch.nn.functional import smooth_l1_loss, nll_loss, log_softmax
+
+from misc.utils import iou, yxyx_to_yxhw
 
 import numpy as np
 
@@ -65,9 +69,9 @@ class SSD(Module):
         cls_score_list = list()
         reg_coord_list = list()
         for f in feature_maps:
-            print("f's shape ",f.shape)
+            # print("f's shape ",f.shape)
             f = f.permute(0,2,3,1).reshape(batch_size, -1, 4*(self.n_classes+4))
-            print("f transformed shape ", f.shape)
+            # print("f transformed shape ", f.shape)
             cls_score = f[:,:,:-4*4].reshape(batch_size, -1, self.n_classes)
             # flatten this tensor is ok, the grid of anchor boxes and tensor is matched
             reg_coord = f[:,:,-4*4:].reshape(batch_size, -1, 4)
@@ -77,8 +81,8 @@ class SSD(Module):
 
         cls_score = torch.cat(cls_score_list, dim=1)
         reg_coord = torch.cat(reg_coord_list, dim=1)
-        print("cls shape ",cls_score.shape)
-        print("reg shape ",reg_coord.shape)
+        # print("cls shape ",cls_score.shape)
+        # print("reg shape ",reg_coord.shape)
         reg_coord = reg_coord + torch.tensor(default_anchors, dtype=torch.float).to(reg_coord.device)
 
         return cls_score, reg_coord
@@ -143,14 +147,64 @@ class SSD(Module):
         # TODO Complete this function for check size of feature maps
         return featuremap_sizes, reduction_ratio
 
-
 # TODO need to make loss function, bbox transform matric
+def multiboxLoss(x, c : torch.tensor, l : torch.tensor, g, alpha=1):
+    """
+    this is for single examples not for minibatch
+    :param x: The matching array, which contains each anchor index and gt box index
+    :param c: classification result#####, suppose this param is already softmaxed
+    :param l: predicted boxes
+    :param g: gt bboxes
+    :return: ssd multibox loss
+    """
+    # TODO Complete loss function, need confidence loss, localization loss
+    # TODO Check the efficiency
+    x = np.argwhere(x == True) # pep 8 warning, using numpy broadcasting
 
+    N = len(x)
+    if N == 0:
+        return 0
+
+    for i, j in x:
+        # localization loss
+        loc_loss = smooth_l1_loss(l[i], g[j, 1:], reduction='sum') # g[j,1:] : gt bbox coordinates
+
+    # positive (background loss)
+    pos_label = torch.tensor([g[j, 0] for _,j in x]).to(device=g.device, dtype=torch.long) # need to cast long type for classification loss
+    pos_cls_loss = nll_loss(log_softmax(c[x[:, 0]]), pos_label, reduction='sum')
+
+    # negative (background loss)
+    neg_idx = np.array([i for i in range(len(l)) if i not in x[:, 0]])
+    neg_label = torch.zeros(len(neg_idx)).to(device=g.device, dtype=torch.long) # need to cast long type for classification loss
+    neg_cls_loss = nll_loss(log_softmax(c[neg_idx]), neg_label, reduction='sum')
+
+    return (alpha * loc_loss + neg_cls_loss + pos_cls_loss) / N
+
+def ssd_box_matching(default_boxes, gt_boxes):
+    """
+    The matching strategy in SSD paper
+
+    :param default_boxes: default anchors
+    :param gt_boxes: gt bboxes
+    :return: matching flags of every x_ij
+    """
+    # TODO SSD class can remember the default matching box indices, it helps to remove duplicates
+    # TODO currently brute force way, check the efficiency
+    match_flag = np.zeros((len(default_boxes), len(gt_boxes)), dtype=np.bool)
+    for d, d_box in enumerate(default_boxes):
+        for gt, gt_box in enumerate(gt_boxes):
+            if iou(d_box, gt_box[1:]) > 0.5:
+                # cnt += 1
+                match_flag[d, gt] = 1
+    return match_flag
 
 if __name__=='__main__':
-    a = np.array([1,2,3,])
-    b = np.array([1,2,3,])
-    print(np.vstack([a,b])*np.array([-1,-2,-3]))
+    a = np.array([10, 10, 30, 30])
+    b = np.array([20, 20, 40, 40])
+    tp = type(a)
+    print(iou(a,b))
+    print(tp)
+    print(type(tp(5)))
 
 
 
