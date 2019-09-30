@@ -1,6 +1,6 @@
 from models.classification.MobileNetV2 import BottleneckBlock
 from models.classification.MoblieNet import DepthwiseSaperableConv2D
-from models.detection.ssd import SSD, ssd_box_matching, multiboxLoss
+from models.detection.ssd import SSD, ssd_box_matching, multiboxLoss, ssd_box_matching_batch, multiboxLoss_batch
 from torch.utils.data import DataLoader
 from torch.nn import Module
 from torch import nn
@@ -92,29 +92,19 @@ if __name__=='__main__':
     dset = VOCDataset('/home/ailab/data/', input_size=(192, 192))
     model = mobilenetv2_mini_ssd(21, (192, 192)).to('cuda')
 
-    # print(model.default_anchors.shape)
-    # print(model.default_anchors.max(), model.default_anchors.min())
-    # print(model.reduction_ratio)
-    # print(model.featuremap_sizes)
-    # print(model.default_anchors[:10])
-
-    dload = DataLoader(dset)
+    dload = DataLoader(dset, batch_size=3)
     diter = iter(dload)
     img, objs = next(diter)
-    img, objs = next(diter)
-    img, objs = next(diter)
-    img, objs = next(diter)
-    img, objs = next(diter)
-    cond = (objs[0,:,0] > -1)
-    objs = objs[0][cond]
-    print('-'*40)
 
     df_anc = model.default_anchors
-    res = ssd_box_matching(df_anc, objs)
-    s_output = torch.randn((len(df_anc), 21), dtype=torch.float)#.to('cuda')
-    print(res.shape)
-    print(np.argwhere(res==True)) # np.argwhere로 out boxes의 위치와 해당 gt_box의 idx를 알아내자
-    print(multiboxLoss(np.argwhere(res==True), s_output, torch.tensor(df_anc, dtype=torch.float), objs))
-    #Think completed loss func
+    matching = ssd_box_matching_batch(df_anc, objs)
+    cls_score, reg_coord = model(img.to('cuda'))
+    print('-'*40)
+    print(matching.shape)
+    print(cls_score.shape)
+    print(reg_coord.shape)
+    print(objs.shape)
+    # print(np.argwhere(res==True)) # np.argwhere로 out boxes의 위치와 해당 gt_box의 idx를 알아내자
+    print(multiboxLoss_batch(matching, cls_score, reg_coord, objs.to('cuda')))
     torch.cuda.empty_cache()
     sys.exit()
