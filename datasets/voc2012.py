@@ -9,23 +9,31 @@ from collections import OrderedDict
 from misc.utils import yxyx_to_yxhw
 
 import numpy as np
-import cv2
 
 import os
 classes = ['background', 'aeroplane', 'bicycle', 'bird', 'boat',
            'bottle', 'bus', 'car', 'cat', 'chair',
            'cow', 'diningtable', 'dog', 'horse', 'motorbike',
            'person', 'pottedplant', 'sheep', 'sofa', 'train',
-           'tv/monitor', ]
+           'tvmonitor', ]
 
 #detection
 class VOCDataset(Dataset):
-    def __init__(self, root:str, dataset='voc2012', input_size=(224,224), transform=None):
+    def __init__(self, root: str, dataset='voc2012', input_size=(224,224), transform=None, box_coord='yxyx'):
+        """
+        Initialize VOC dataset
+        :param root: root directory of the dataset
+        :param dataset: default voc2012
+        :param input_size: desired image size
+        :param transform: define pytorch transform here
+        :param box_coord: 'yxyx' for y1 x1 y2 x2, 'yxhw' for y_center x_center h w
+        """
         super(VOCDataset, self).__init__()
 
         self.root = root
         self.dataset = dataset.upper()
         self.input_size = input_size
+        self.box_coord = box_coord
 
         self.data_dir = os.path.join(self.root, self.dataset)
         self.ann_dir = os.path.join(self.data_dir, 'Annotations')
@@ -57,7 +65,8 @@ class VOCDataset(Dataset):
         # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img = self.transform(img)
         # label
-        objects[:,1:] = np.vstack([yxyx_to_yxhw(i) for i in objects[:,1:]])
+        if self.box_coord == 'yxhw':
+            objects[:,1:] = np.vstack([yxyx_to_yxhw(i) for i in objects[:,1:]])
         objects = torch.tensor(objects, dtype=torch.float)
 
         return img, objects
@@ -107,7 +116,7 @@ class VOCDataset(Dataset):
             objects[idx][4] = int(obj['bndbox']['xmax']) - 1
 
         # reduce the length, height of bbox to match transformed image size
-        objects[:,1] = objects[:,1] * (self.input_size[0] / img_size[1])
+        objects[:,1] = objects[:, 1] * (self.input_size[0] / img_size[1])
         objects[:, 2] = objects[:, 2] * (self.input_size[1] / img_size[2])
         objects[:, 3] = objects[:, 3] * (self.input_size[0] / img_size[1])
         objects[:, 4] = objects[:, 4] * (self.input_size[1] / img_size[2])
