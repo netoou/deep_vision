@@ -21,6 +21,8 @@ def map_detection(pred_cls, pred_boxes, gt_cls, gt_boxes, iou_thre=0.5):
     gt_cls = np.array(gt_cls)
     gt_boxes = np.array(gt_boxes)
 
+    classes = np.unique(gt_cls)
+
     iou_score_box = np.zeros((len(pred_boxes), len(gt_boxes)), dtype=np.float)
     for p, pbox in enumerate(pred_boxes):
         for g, gbox in enumerate(gt_boxes):
@@ -31,20 +33,16 @@ def map_detection(pred_cls, pred_boxes, gt_cls, gt_boxes, iou_thre=0.5):
     # now we have the indices of alive boxes(iou over iou_threshold), [[pred_idx, gt_idx]] <--- 2d matrix
     label_matched_pred_score = np.zeros((len(alive_box_indices)), dtype=np.float)
     # suppose there is one prediction per one predicted box, class
-    for idx, (p, g) in enumerate(alive_box_indices):
-        gt = gt_cls[g]
-        pred = sigmoid(pred_cls[p])
-        label_matched_pred_score[idx] = pred
 
-    n_alive_sample = len(label_matched_pred_score)
-    # fitting to order
-    sorting_idx = np.argsort(label_matched_pred_score)
-    decision_threshold = np.unique(label_matched_pred_score[sorting_idx])
+    pred_cls = pred_cls[alive_box_indices[:,0]]
+    gt_cls = pred_cls[alive_box_indices[:,1]]
 
-    for thres in decision_threshold:
-        thred_score = np.array(label_matched_pred_score > thres, dtype=np.long)
+    sum_ap = 0.0
+    for cls in classes:
+        mask_cls = gt_cls == cls
+        sum_ap += average_precision(pred_cls[mask_cls], gt_cls[mask_cls])
 
-    return decision_threshold
+    return sum_ap / len(classes)
 
 def precision_recall(pred_score: np.array, gt_label: np.array):
     """
@@ -80,21 +78,17 @@ def precision_recall(pred_score: np.array, gt_label: np.array):
     return precisions, recalls, decision_thresholds
 
 def average_precision(pred_score: np.array, gt_label: np.array):
+    """
+    Average precision
+    :param pred_score:
+    :param gt_label:
+    :return:
+    """
     precision, recall, _ = precision_recall(pred_score, gt_label)
     precision = np.flip(precision, axis=0)
     recall = np.flip(recall, axis=0)
     diff = np.diff(recall)
-    ap_score = 0.0
-    # p_max = 1.0
-    #     # r_point = 0.0
-    #     # for i, (p, r) in enumerate(zip(precision, recall)):  # smoothing p-r curve
-    #     #     if p < p_max:
-    #     #         ap_score += p_max * (r - r_point)
-    #     #         p_max = precision[i+1:].max()
-    #     #         r_point = r
-
-    # ap_score += p_max * (1 - r_point)
-
+    ap_score = np.sum(diff * precision[1:])
 
     return ap_score
 
