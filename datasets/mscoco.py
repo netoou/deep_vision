@@ -35,7 +35,7 @@ class COCOdb(Dataset):
                   'oven', 'toaster', 'sink', 'refrigerator', 'book',
                   'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush', ]
 
-    def __init__(self, data_dir, data_type, ann_type, input_size=(512, 512), transforms=None):
+    def __init__(self, data_dir: str, data_type: str, ann_type: str, input_size=(512, 512), transforms=None):
         super(COCOdb, self).__init__()
         assert data_type in ['train2017', 'val2017', 'test2017', 'train2014', 'val2014', 'test2014']
         assert ann_type in ['instances', 'keypoints']
@@ -69,21 +69,32 @@ class COCOdb(Dataset):
 
         labels = torch.tensor(self._multiclass_label(img_id), dtype=torch.long)
 
-        masks = torch.tensor(self._foreground_mask(img_id), dtype=torch.int8)
+        masks = torch.tensor(self._foreground_mask(img_id, self.input_size), dtype=torch.int8)
 
         return img, labels, masks
 
     def __len__(self):
         return len(self.img_ids)
 
-    def _foreground_mask(self, img_id):
+    def _foreground_mask(self, img_id, input_size: tuple):
+        """
+        Concatenates all object masks into one, It is able to used to separate foreground and background
+
+        :param img_id: image id
+        :return: foreground masks ()
+        """
         img_ann_ids = self.coco_gt.getAnnIds(img_id)
         masks = np.array([self.coco_gt.annToMask(self.coco_anns[i]) for i in img_ann_ids], dtype=np.uint8).sum(axis=0)
         masks.dtype = np.uint8
-        return cv2.resize(masks, self.input_size)
+        return cv2.resize(masks, input_size)
 
     def _multiclass_label(self, img_id):
-        # maximum annotation length : 100;;;;; 텐서 차원을 다 맞춰줘야 함
+        """
+        An image can have multiple objects, so this function can transform annotations of the image to multi-class label
+
+        :param img_id: image id
+        :return:
+        """
         img_ann_ids = self.coco_gt.getAnnIds(img_id)
         uniq_cls = np.unique([self.coco_anns[i]['category_id'] for i in img_ann_ids])
         uniq_cls = np.array([COCOdb.categories.index(self.coco_gt.cats[i]['name']) for i in uniq_cls])
@@ -98,3 +109,8 @@ if __name__ == '__main__':
     coco_dir = '/home/ailab/hdd1/coco'
     prefix = 'instances'
     data_type = 'val2017'
+    import math
+    math.gcd()
+    math.fmod()
+    bbbb = [1,2,3,4,5]
+    bbbb.count(1)

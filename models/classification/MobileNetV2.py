@@ -1,9 +1,8 @@
-import torch
-
 from torch import nn
 from torch.nn import Module
 
 from models.classification.MoblieNet import DepthwiseConv2d
+
 
 class BottleneckBlock(Module):
     def __init__(self, in_channel, out_channel, kernel_size, stride=1, padding=0,
@@ -23,7 +22,7 @@ class BottleneckBlock(Module):
         # Define depthwise
         self.depthwise = DepthwiseConv2d(self.middle_expension, kernel_size=kernel_size,
                                          stride=stride, padding=padding, bias=bias)
-        self.depthwise.relu = nn.ReLU6() # might not be supported cuda on this code ????????? check and fix it
+        self.depthwise.relu = nn.ReLU6()
 
         # define bottleneck
         self.linear_bottleneck = nn.Conv2d(self.middle_expension, self.out_channel,
@@ -133,14 +132,3 @@ class MobileNetV2(Module):
 
         return input
 
-
-
-if __name__ == "__main__":
-    device = torch.device("cuda")
-    # bottle = BottleneckBlock(4,8,3,device=device).to(device)
-    model = MobileNetV2(10, device=device).to(device)
-    in_feature = torch.randn(size=(1,3,224,224)).to(device)
-
-    out = model(in_feature)
-
-    print(out.shape)

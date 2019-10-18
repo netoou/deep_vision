@@ -43,6 +43,7 @@ def voc_annTotarget(ann, batch_size, n_classes=21):
 
     return target
 
+torch.
 # Model Setting
 model = MiniMobileNet(n_classes=100, device=device).to(device)
 # model = torchvision.models.resnet18().to(device)
@@ -85,7 +86,7 @@ if __name__ == '__main__':
 
                     optimizer.zero_grad()
 
-                    with torch.set_grad_enabled(phase=='train'):
+                    with torch.set_grad_enabled(phase == 'train'):
                         out = model(imgs)
                         loss = criterion(out, targets)
 
