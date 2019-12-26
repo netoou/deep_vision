@@ -107,10 +107,7 @@ class COCOdb(Dataset):
 
 if __name__ == '__main__':
     coco_dir = '/home/ailab/hdd1/coco'
-    prefix = 'instances'
     data_type = 'val2017'
-    import math
-    math.gcd()
-    math.fmod()
-    bbbb = [1,2,3,4,5]
-    bbbb.count(1)
+    prefix = 'instances'
+
+
