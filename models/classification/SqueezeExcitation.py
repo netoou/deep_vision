@@ -7,15 +7,17 @@ from models.classification.util_module import Flatten
 class SEblock(Module):
     def __init__(self, channel, reduction_ratio=8, activation=None, bias=False):
         super(SEblock, self).__init__()
+        assert channel > reduction_ratio, 'Too small channels, reduce reduction ratio.'
+
         if activation == None:
             activation = nn.ReLU(inplace=True)
 
         self.se = nn.Sequential(
             nn.AdaptiveMaxPool2d((1,1)),
             Flatten(),
-            nn.Linear(channel, channel // reduction_ratio, bias=bias),
+            nn.Linear(channel, int(channel // reduction_ratio), bias=bias),
             activation,
-            nn.Linear(channel // reduction_ratio, channel, bias=bias),
+            nn.Linear(int(channel // reduction_ratio), channel, bias=bias),
             nn.Sigmoid(),
         )
 

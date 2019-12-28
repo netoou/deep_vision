@@ -8,7 +8,7 @@ import os
 
 class Cifar100Dataset(Dataset):
     """CIFAR100 Dataset."""
-    def __init__(self, root_dir, set_type='train', transform=None, val_size=2000):
+    def __init__(self, root_dir, set_type='train', transform=None, val_size=0):
         self.root_dir = root_dir
         self.set_type = set_type
         self.transform = transform
