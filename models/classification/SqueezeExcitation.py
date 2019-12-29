@@ -16,7 +16,7 @@ class SEblock(Module):
             nn.AdaptiveMaxPool2d((1,1)),
             Flatten(),
             nn.Linear(channel, int(channel // reduction_ratio), bias=bias),
-            activation,
+            activation(),
             nn.Linear(int(channel // reduction_ratio), channel, bias=bias),
             nn.Sigmoid(),
         )

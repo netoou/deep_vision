@@ -8,7 +8,7 @@ class DepthwiseConv2d(Module):
 
     """
     def __init__(self, in_channel, kernel_size, stride=1, padding=0,
-                 bias=True, bn=True, activation=nn.ReLU()):
+                 bias=True, bn=True, activation=nn.ReLU):
         super(DepthwiseConv2d, self).__init__()
         self.in_channel = in_channel
         self.batch_norm = bn
@@ -19,7 +19,7 @@ class DepthwiseConv2d(Module):
         if bn:
             self.bn = nn.BatchNorm2d(self.in_channel)
         if not activation == None:
-            self.activation = activation
+            self.activation = activation()
 
     def forward(self, input):
         """
@@ -40,7 +40,7 @@ class DepthwiseConv2d(Module):
         return depthwise_feature
 
 class PointwiseConv2d(Module):
-    def __init__(self, in_channel, out_channel, bias=True, bn=True, activation=nn.ReLU()):
+    def __init__(self, in_channel, out_channel, bias=True, bn=True, activation=nn.ReLU):
         super(PointwiseConv2d, self).__init__()
         self.in_channel = in_channel
         self.out_channel = out_channel
@@ -51,7 +51,7 @@ class PointwiseConv2d(Module):
         if bn:
             self.bn = nn.BatchNorm2d(self.out_channel),
         if not activation == None:
-            self.activation = activation
+            self.activation = activation()
 
     def forward(self, input):
         """

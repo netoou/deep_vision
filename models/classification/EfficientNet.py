@@ -38,9 +38,9 @@ class MBConv(Module):
         )
 
         self.depthwise_layer = DepthwiseConv2d(in_channel * expension_ratio, kernel_size, stride=stride,
-                                               padding=(kernel_size // 2), bias=False, activation=nn.ReLU6())
+                                               padding=(kernel_size // 2), bias=False, activation=nn.ReLU6)
 
-        self.se_block = SEblock(in_channel * expension_ratio, se_ratio, activation=nn.ReLU6())
+        self.se_block = SEblock(in_channel * expension_ratio, se_ratio, activation=nn.ReLU6)
 
         self.linear_bottleneck = nn.Conv2d(in_channel * expension_ratio, out_channel, 1, bias=False)
 

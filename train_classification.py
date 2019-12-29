@@ -57,8 +57,8 @@ def train_epoch(model, epoch, optimizer, criterion, data_loaders, device, log):
         loss_list = list()
         phase_time = time.time()
 
-        t = tqdm(enumerate(data_loaders[phase]), desc=f'Epoch{epoch}, {phase}', position=0)
-        for step, (imgs, targets) in t:
+        t = tqdm(data_loaders[phase], desc=f'Epoch{epoch}, {phase}', position=0)
+        for step, (imgs, targets) in enumerate(t):
             imgs = imgs.to(device)
             targets = targets.to(device)
 

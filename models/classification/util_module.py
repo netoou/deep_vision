@@ -2,10 +2,12 @@ import torch
 from torch.nn import Module
 from torch import nn
 
+
 class Flatten(Module):
     def forward(self, input):
         batch, _, _, _ = input.size()
         return input.reshape(batch, -1)
+
 
 class SwishActivation(Module):
     def __init__(self, activation):
@@ -14,6 +16,17 @@ class SwishActivation(Module):
 
     def forward(self, input):
         return input * self.activation(input)
+
+
+class HSwish(Module):
+    # For Mobilenet-v3
+    def __init__(self):
+        super(HSwish, self).__init__()
+        self.relu = nn.ReLU6()
+
+    def forward(self, input):
+        return input * self.relu(input + 3) / 6
+
 
 def drop_connection(input, training, drop_ratio):
     if not training:
