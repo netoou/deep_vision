@@ -26,7 +26,8 @@ class ConvBlock(Module):
 
 
 class MBConv(Module):
-    def __init__(self, in_channel, out_channel, kernel_size, stride=1, expension_ratio=6, se_ratio=8, residual=True, drop_connect=0.3):
+    def __init__(self, in_channel, out_channel, kernel_size, stride=1, expension_ratio=6, se_ratio=8, residual=True,
+                 drop_connect=0.3):
         super(MBConv, self).__init__()
         self.residual = residual if stride == 1 and in_channel == out_channel else False
         self.drop_connect = drop_connect

@@ -38,6 +38,21 @@ def drop_connection(input, training, drop_ratio):
 
     return (input / surviving_prob) * feature  # tricks to avoid inference time computation of original paper https://arxiv.org/pdf/1603.09382.pdf
 
+
+def conv_bn_act(in_channels: int, out_channels: int, kernel_size: int, stride = 1, padding = 0,
+                 dilation = 1, groups = 1, bias = True, padding_mode = 'zeros', activation = nn.ReLU6):
+    cbr = nn.Sequential(
+        nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias, padding_mode),
+        nn.BatchNorm2d(out_channels),
+        activation()
+    )
+    return cbr
+
+
+def parameter_calculator(model: Module):
+    return sum(param.numel() for param in model.parameters())
+
+
 if __name__=='__main__':
     tsr = torch.randn((8, 3, 4, 4))
 

@@ -33,7 +33,7 @@ class Cifar100Dataset(Dataset):
 
     def __getitem__(self, idx):
         # Image
-        img = self.data[idx].reshape((3,32,32))
+        img = self.data[idx].reshape((3,32,32)).transpose(1,2,0)
         img = self.transform(img)
 
         # Label

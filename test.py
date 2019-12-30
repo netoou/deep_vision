@@ -35,15 +35,7 @@ voc_val = torchvision.datasets.voc.VOCDetection(VOC2012, image_set='val', transf
                                                                                         transforms.ToTensor(),]))
 val_loader = torch.utils.data.DataLoader(voc_val, batch_size=batch_size, shuffle=False, num_workers=4)
 """
-def voc_annTotarget(ann, batch_size, n_classes=21):
-    target = torch.zeros([batch_size, n_classes], dtype=torch.float)
-    for obj in ann['annotation']['object']:
-        for batch_idx,obj_name in enumerate(obj['name']):
-            target[batch_idx][voc_class[obj_name]] = 1
 
-    return target
-
-torch.
 # Model Setting
 model = MiniMobileNet(n_classes=100, device=device).to(device)
 # model = torchvision.models.resnet18().to(device)

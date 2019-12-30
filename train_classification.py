@@ -9,6 +9,8 @@ from torchvision import transforms
 from torch.utils.data.dataloader import DataLoader
 
 from models.classification.EfficientNet import EfficientNet
+from models.classification.MobileNetV3 import mobilenet_v3
+from models.classification.ResNeXt import resnext
 from datasets.cifar import Cifar100Dataset
 
 from sklearn.metrics import average_precision_score, f1_score, accuracy_score
@@ -30,8 +32,8 @@ def topk_accuracy(logits: torch.tensor, targets: torch.tensor, k: int):
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str, default='cifar100')
-    parser.add_argument('--network', type=str, default='efficientnet-b0')
-    parser.add_argument('--cuda', type=bool, default=True)
+    parser.add_argument('--model', type=str, default='resnext-mini-16-4d')#'mobilenet-v3-small')#'efficientnet-b0')
+    parser.add_argument('--cuda', type=bool, default=False)
 
     parser.add_argument('--optim', type=str, default='sgd')
     parser.add_argument('--momentum', type=float, default=0.9)
@@ -118,7 +120,7 @@ if __name__=='__main__':
     experiment_time = "date{}{}{}".format(nowdate.year, nowdate.month, nowdate.day)
 
     save_dir = f'./saved/{experiment_time}/'
-    logfile = f'./logs/{arg.network}_trained_on_{experiment_time}.txt'
+    logfile = f'./logs/{arg.model}_trained_on_{experiment_time}.txt'
 
     device = 'cuda' if arg.cuda else 'cpu'
     dset = 'cifar' if arg.dataset in ['cifar100', 'cifar10'] else None
@@ -130,8 +132,20 @@ if __name__=='__main__':
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
 
-    model = EfficientNet(100, 1.0, 1.0, dset).to(device)
-    optimizer = optim.SGD(model.parameters(), lr=arg.lr, momentum=arg.momentum, weight_decay=arg.weight_decay, nesterov=True)
+    if arg.model == 'efficientnet-b0':
+        model = EfficientNet(100, 1.0, 1.0, dset).to(device)
+    elif arg.model == 'mobilenet-v3-small':
+        model = mobilenet_v3(100, 'small').to(device)
+    elif arg.model == 'mobilenet-v3-large':
+        model = mobilenet_v3(100, 'large').to(device)
+    elif arg.model == 'resnext-mini-16-4d':
+        model = resnext(100, 'resnext-mini-16-4d').to(device)
+    elif arg.model == 'resnext50-32-4d':
+        model = resnext(100, 'resnext50-32-4d').to(device)
+
+    optimizer = optim.SGD(model.parameters(), lr=arg.lr, momentum=arg.momentum,
+                          weight_decay=arg.weight_decay, nesterov=True)
+
     criterion = nn.CrossEntropyLoss().to(device)
 
     lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[60, 120, 160], gamma=0.2)
@@ -173,7 +187,7 @@ if __name__=='__main__':
                 print("Best model found!!")
                 log.write("Best model found!!!!\n")
 
-                save_path = os.path.join(save_dir, f'{arg.network}_epoch{epoch}.pth')
+                save_path = os.path.join(save_dir, f'{arg.model}_epoch{epoch}.pth')
                 torch.save({
                     'epoch': epoch,
                     'model_state_dict': model.state_dict(),
