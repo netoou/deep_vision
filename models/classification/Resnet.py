@@ -213,8 +213,6 @@ class Resnet50(Module):
 
         return outs
 
-# TODO Compound scaling grid search
-
 if __name__=="__main__":
     aaa = torch.zeros((1, 3, 224, 224))
     model = Resnet50(n_classes=10)
