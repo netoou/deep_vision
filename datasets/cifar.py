@@ -5,6 +5,15 @@ import numpy as np
 
 import os
 
+CIFAR_MEAN = {
+    'cifar10': (0.4914, 0.4822, 0.4465),
+    'cifar100': (0.5071, 0.4867, 0.4408),
+}
+
+CIFAR_STD = {
+    'cifar10': (0.2023, 0.1994, 0.2010),
+    'cifar100': (0.2675, 0.2565, 0.2761),
+}
 
 class Cifar100Dataset(Dataset):
     """CIFAR100 Dataset."""
@@ -27,6 +36,8 @@ class Cifar100Dataset(Dataset):
                 transforms.ToPILImage(),
                 transforms.ToTensor(),
             ])
+        # separate normalization to apply dynamic augment policy
+        self.normalize = transforms.Normalize(CIFAR_MEAN['cifar100'], CIFAR_STD['cifar100'])
 
     def __len__(self):
         return len(self.label)
@@ -38,7 +49,7 @@ class Cifar100Dataset(Dataset):
 
         # Label
         label = torch.tensor(self.label[idx], dtype=torch.long)
-        return img, label
+        return self.normalize(img), label
 
     def _unpickle(self, file):
         import pickle
@@ -46,13 +57,13 @@ class Cifar100Dataset(Dataset):
             dict = pickle.load(fo, encoding='bytes')
         return dict
 
+    def set_transform(self, transform):
+        self.transform = transform
+
 
 if __name__ == '__main__':
     dset = Cifar100Dataset('/home/ailab/data/cifar-100-python/')
     dloader = DataLoader(dset,batch_size=4)
     print(len(dset))
     print(len(dloader))
-    for img, lab in dloader:
-        print(img.shape)
-        print(lab.shape)
-        break
+    dloader.dataset.set_transform(1)
