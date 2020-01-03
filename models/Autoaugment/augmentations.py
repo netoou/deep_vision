@@ -186,6 +186,7 @@ def augment_list(for_autoaug=True):  # 16 oeprations and their ranges
 
 
 augment_dict = {fn.__name__: (fn, v1, v2) for fn, v1, v2 in augment_list()}
+AUGMENT_NAMES = list(augment_dict.keys())
 
 
 def get_augment(name):
@@ -197,7 +198,7 @@ def apply_augment(img, name, level):
     return augment_fn(img.copy(), level * (high - low) + low)
 
 
-class AugmentPolicy:
+class AugmentPolicyTransform:
     # set this class to transform position at dataset object
     def __init__(self, policy, totensor=True):
         self.totensor = ToTensor() if totensor else None

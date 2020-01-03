@@ -4,7 +4,7 @@ from torch.nn import Module
 
 from models.classification.MoblieNet import DepthwiseConv2d
 from models.classification.SqueezeExcitation import SEblock
-from models.classification.util_module import Flatten, HSwish
+from models.classification.util_module import Flatten, parameter_calculator, HSwish
 
 
 class MBv3SE(Module):
@@ -221,6 +221,5 @@ def mobilenet_v3(n_classes, arc='small'):
 
 if __name__=='__main__':
     model = mobilenet_v3(100, 'small')
-    print(model)
-    sample_inp = torch.rand((4,3,64,64))
-    print(model(sample_inp))
+    print(parameter_calculator(model))
+

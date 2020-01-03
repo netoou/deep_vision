@@ -6,7 +6,7 @@ import torch
 
 from models.utils import topk_accuracy
 
-from models.Autoaugment.augmentations import AugmentPolicy
+from models.Autoaugment.augmentations import AugmentPolicyTransform
 
 import math
 
@@ -44,7 +44,7 @@ class Trainer:
             opt_arg = dict(DEFAULT_OPT_ARGS)
         opt_arg['params'] = self.model.parameters()
         self.optimizer = optimizer(**opt_arg)
-        self.lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[60, 120, 160], gamma=0.2)
+        self.lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=[60, 120, 160], gamma=0.2)
 
         self.datasets = datasets
 
@@ -58,7 +58,7 @@ class Trainer:
             'val': DataLoader(self.datasets['val'], self.batch_size, shuffle=False, num_workers=self.n_workers),
         }
 
-        for epoch in self.epochs:
+        for epoch in range(self.epochs):
             for phase in ['train', 'val']:
                 if phase == 'train':
                     self.model.train()
@@ -100,11 +100,37 @@ class Trainer:
                     if loss < best_loss:
                         best_loss = loss
 
+            self.lr_scheduler.step()
+
         return best_top1, best_top5, best_loss
 
     def set_policy(self, policy):
         # policy : containing 5 sub-policies which has two operations with magnitude and probability params
         # set augment policy at transform of dataset
-        self.datasets['train'].set_transform(AugmentPolicy(policy))
+        self.datasets['train'].set_transform(AugmentPolicyTransform(policy))
 
+if __name__ == '__main__':
+    from datasets.cifar import Cifar100Dataset
+    from models.classification.MobileNetV3 import mobilenet_v3
+    from torchvision import transforms
+    device = 'cpu'
+    model = mobilenet_v3(100, 'small').to(device)
 
+    transform = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.ToTensor(),
+    ])
+
+    transform_val = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.ToTensor(),
+    ])
+
+    datasets = {
+        'train': Cifar100Dataset('/home/ailab/data/cifar-100-python/', transform=transform, set_type='train'),
+        'val': Cifar100Dataset('/home/ailab/data/cifar-100-python/', transform=transform_val, set_type='test')
+    }
+
+    trainer = Trainer(model, datasets, device, 50, 32, 4)
+
+    trainer.train()
