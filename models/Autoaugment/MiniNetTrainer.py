@@ -59,6 +59,7 @@ class Trainer:
         }
 
         for epoch in range(self.epochs):
+            print(f"epoch : {epoch}")
             for phase in ['train', 'val']:
                 if phase == 'train':
                     self.model.train()
@@ -92,6 +93,7 @@ class Trainer:
                     loss = torch.tensor(loss_list).mean()
                     top1_acc = topk_accuracy(logits, gt_targets, k=1)
                     top5_acc = topk_accuracy(logits, gt_targets, k=5)
+
 
                     if top1_acc > best_top1:
                         best_top1 = top1_acc

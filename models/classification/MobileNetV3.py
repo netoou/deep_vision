@@ -212,10 +212,26 @@ mbv3_small_dict = {  # expension_ratio, kernel_size, stride, n_channel, se, nl
     'last': (576, 1280),  # mid channel, out channel
 }
 
+mbv3_small2_dict = {  # expension_ratio, kernel_size, stride, n_channel, se, nl
+    'stage1': (1, 3, 1, 16, True, nn.ReLU),
+    'stage2': (6, 3, 2, 24, False, nn.ReLU),
+    'stage4': (4, 5, 1, 40, True, nn.ReLU),
+    'stage5': (6, 5, 1, 40, True, HSwish),
+    'stage8': (3, 5, 1, 48, True, HSwish),
+    'stage9': (6, 5, 2, 96, True, HSwish),
+    'stage10': (6, 5, 1, 96, True, HSwish),
+    'stage11': (6, 5, 1, 96, True, HSwish),
+    'last': (96*4, 96*5),  # mid channel, out channel
+}
 
 def mobilenet_v3(n_classes, arc='small'):
-    assert arc in ['small', 'large']
-    model_arc = mbv3_small_dict if arc == 'small' else mbv3_large_dict
+    assert arc in ['small', 'large', 'small2']
+    if arc == 'small':
+        model_arc = mbv3_small_dict
+    elif arc == 'large':
+        model_arc = mbv3_large_dict
+    elif arc == 'small2':
+        model_arc = mbv3_small2_dict
     model = MobileNetV3(n_classes, model_arc)
     return model
 

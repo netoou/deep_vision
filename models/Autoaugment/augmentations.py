@@ -219,14 +219,13 @@ class AugmentPolicyTransform:
 
             for name, prob, mag in sub_policy:
                 if np.random.rand() < prob:
-                    print(name, mag)
                     img = apply_augment(img, name, mag)
             return img
 
         return apply_transform
 
 if __name__ == '__main__':
-    pc = AugmentPolicy([
+    pc = AugmentPolicyTransform([
         [('Solarize', 0.66, 0.34), ('Equalize', 0.56, 0.61)],
         [('Equalize', 0.43, 0.06), ('AutoContrast', 0.66, 0.08)],
         [('Color', 0.72, 0.47), ('Contrast', 0.88, 0.86)],

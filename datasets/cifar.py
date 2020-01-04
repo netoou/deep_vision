@@ -61,6 +61,51 @@ class Cifar100Dataset(Dataset):
         self.transform = transform
 
 
+class SmallCifar100(Dataset):
+    """CIFAR100 Dataset."""
+    def __init__(self, root_dir, set_type='train', transform=None, size=100):
+        self.root_dir = root_dir
+        self.set_type = set_type
+        self.transform = transform
+
+        self.set_dir = os.path.join(root_dir, 'test' if self.set_type == 'test' else 'train')
+        self.data_dict = self._unpickle(self.set_dir)
+        self.data = self.data_dict[b'data'][:size]
+        self.label = self.data_dict[b'fine_labels'][:size]
+        assert len(self.label) == len(self.data), 'Quantity of the data and label does not match!'
+
+        if not transform == None:
+            self.transform = transform
+        else:
+            self.transform = transforms.Compose([
+                transforms.ToPILImage(),
+                transforms.ToTensor(),
+            ])
+        # separate normalization to apply dynamic augment policy
+        self.normalize = transforms.Normalize(CIFAR_MEAN['cifar100'], CIFAR_STD['cifar100'])
+
+    def __len__(self):
+        return len(self.label)
+
+    def __getitem__(self, idx):
+        # Image
+        img = self.data[idx].reshape((3,32,32)).transpose(1,2,0)
+        img = self.transform(img)
+
+        # Label
+        label = torch.tensor(self.label[idx], dtype=torch.long)
+        return self.normalize(img), label
+
+    def _unpickle(self, file):
+        import pickle
+        with open(file, 'rb') as fo:
+            dict = pickle.load(fo, encoding='bytes')
+        return dict
+
+    def set_transform(self, transform):
+        self.transform = transform
+
+
 if __name__ == '__main__':
     dset = Cifar100Dataset('/home/ailab/data/cifar-100-python/')
     dloader = DataLoader(dset,batch_size=4)
