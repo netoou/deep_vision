@@ -8,7 +8,8 @@ import torch
 from models.Autoaugment.MiniNetTrainer import Trainer
 from models.Autoaugment.augmentations import AUGMENT_NAMES
 
-# netoou's autoaugment with custom LSTM controller
+# netoou's autoaugment implementation with custom LSTM controller and actor-critic method
+# need evaluation this code
 
 class LSTMController(Module):
     def __init__(self, op_space=19, prob_space=11, mag_space=10):

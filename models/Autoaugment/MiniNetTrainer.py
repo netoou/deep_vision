@@ -106,10 +106,13 @@ class Trainer:
 
         return best_top1, best_top5, best_loss
 
-    def set_policy(self, policy):
+    def set_policy(self, policy):  # for AutoAugment
         # policy : containing 5 sub-policies which has two operations with magnitude and probability params
         # set augment policy at transform of dataset
         self.datasets['train'].set_transform(AugmentPolicyTransform(policy))
+
+    def set_randaugment(self, randaug):
+        self.datasets['train'].set_transform(randaug)
 
 if __name__ == '__main__':
     from datasets.cifar import Cifar100Dataset

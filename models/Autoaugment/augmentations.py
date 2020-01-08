@@ -156,6 +156,10 @@ def SamplePairing(imgs):  # [0, 0.4]
     return f
 
 
+def Identity(imgs):
+    return imgs
+
+
 def augment_list(for_autoaug=True):  # 16 oeprations and their ranges
     l = [
         (ShearX, -0.3, 0.3),  # 0
@@ -187,6 +191,7 @@ def augment_list(for_autoaug=True):  # 16 oeprations and their ranges
 
 augment_dict = {fn.__name__: (fn, v1, v2) for fn, v1, v2 in augment_list()}
 AUGMENT_NAMES = list(augment_dict.keys())
+RAND_AUGMENT_NAMES = list(augment_dict.keys()) + ['Identity']
 
 
 def get_augment(name):
@@ -223,6 +228,39 @@ class AugmentPolicyTransform:
             return img
 
         return apply_transform
+
+
+class RandAugmentPolicyTransform:
+    def __init__(self, N: int, M: int, totensor=True):
+        self.totensor = ToTensor() if totensor else None
+        self.N = N
+        self.M = M
+        self.magnitude_controller = 1
+
+    def __call__(self, img):
+        policy = self.randaugment(self.N, self.M * self.magnitude_controller)
+
+        if self.totensor:
+            return self.totensor(self._apply_transform(img, policy))
+        else:
+            return self._apply_transform(img, policy)
+
+    def _apply_transform(self, img, policy):
+        if not type(img) == PIL.Image.Image:
+            img = PIL.Image.fromarray(img)
+
+        for name, mag in policy:
+            img = apply_augment(img, name, mag)
+
+        return img
+
+    def randaugment(self, n, m):
+        sampled_ops = np.random.choice(RAND_AUGMENT_NAMES, n)
+        return [(op, m) for op in sampled_ops]
+
+    def step_magnitude_controller(self, value):
+        self.magnitude_controller = value
+
 
 if __name__ == '__main__':
     pc = AugmentPolicyTransform([
